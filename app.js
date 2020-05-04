@@ -68,8 +68,7 @@ passport.use(new GoogleStrategy({
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
   },
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
-
+    // mongoose-findorcreate: https://www.npmjs.com/package/mongoose-findorcreate
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -119,11 +118,18 @@ app.route("/login")
   });
 });
 
+app.get("/auth/google", passport.authenticate("google", {scope: ["profile"]})
+);
+
+app.get("/auth/google/secrets", passport.authenticate("google", { failureRedirect: "/login" }), function(req, res) {
+  res.redirect("/secrets");
+});
+
 app.get("/secrets", function(req, res){
   if (req.isAuthenticated()) {
     res.render("secrets");
   } else {
-    res.redirect("login");
+    res.redirect("/login");
   }
 });
 
@@ -140,14 +146,14 @@ app.get("/register", function(req, res){
   bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
     if(err) {
       console.log(err);
-      res.redirect("register");
+      res.redirect("/register");
     } else {
       const user = new User({
         email: req.body.username,
         password: hash
       });
       user.save();
-      // res.redirect("secrets");
+      // res.redirect("/secrets");
       res.render("secrets-bcrypt");
     }
   });
@@ -157,14 +163,14 @@ app.get("/login", function(req, res){
   User.findOne({email: req.body.username}, function(err, foundUser) {
     if (err) {
       console.log(err);
-      res.redirect("login");
+      res.redirect("/login");
     } else {
       if (foundUser) {
         bcrypt.compare(req.body.password, foundUser.password, function(err, result) {
             if (result === true) {
               res.render("secrets-bcrypt");
             } else {
-              res.redirect("login");
+              res.redirect("/login");
             }
         });
       }
