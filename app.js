@@ -4,6 +4,9 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
 
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
+
 const app = express();
 
 app.use(express.static("public"));
@@ -14,7 +17,10 @@ app.use(bodyParser.urlencoded({
 
 // db connection
 
-mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true});
+mongoose.connect("mongodb://localhost:27017/userDB", {
+  useUnifiedTopology: true,
+  useNewUrlParser: true
+});
 mongoose.set("useCreateIndex", true);
 
 const userSchema = {
@@ -32,13 +38,53 @@ app.get("/", function(req, res){
   res.render("home");
 });
 
-app.get("/login", function(req, res){
-  res.render("login");
+app.route("/register")
+.get(function(req, res){
+  res.render("register");
+})
+.post(function(req, res){
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    if(err) {
+      console.log(err);
+      res.redirect("register");
+    } else {
+      const user = new User({
+        email: req.body.username,
+        password: hash
+      });
+      user.save();
+      // res.redirect("secrets");
+      res.render("secrets-bcrypt");
+    }
+  });
 });
 
-app.get("/register", function(req, res){
-  res.render("register");
+app.route("/login")
+.get(function(req, res){
+  res.render("login");
+})
+.post(function(req, res){
+  User.findOne({email: req.body.username}, function(err, foundUser) {
+    if (err) {
+      console.log(err);
+      res.redirect("login");
+    } else {
+      if (foundUser) {
+        bcrypt.compare(req.body.password, foundUser.password, function(err, result) {
+            if (result === true) {
+              res.render("secrets-bcrypt");
+            } else {
+              res.redirect("login");
+            }
+        });
+      }
+    }
+  });
 });
+
+// app.get("/secrets", function(req, res){
+//   res.render("secrets");
+// });
 
 // listener
 
