@@ -126,11 +126,36 @@ app.get("/auth/google/secrets", passport.authenticate("google", { failureRedirec
 });
 
 app.get("/secrets", function(req, res){
+  User.find({"secrets": {$ne: null}}, function(err, foundUsers) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (foundUsers) {
+        res.render("secrets", {usersWithSecrets: foundUsers});
+      }
+    }
+  });
+});
+
+app.route("/submit")
+.get(function(req, res) {
   if (req.isAuthenticated()) {
-    res.render("secrets");
+    res.render("submit");
   } else {
     res.redirect("/login");
   }
+})
+.post(function(req, res) {
+  User.findById(req.user.id, function(err, foundUser) {
+    if (err) {
+      console.log(err);
+    } else {
+      foundUser.secrets.push(req.body.secret);
+      foundUser.save(function() {
+        res.redirect("/secrets");
+      });
+    }
+  });
 });
 
 app.get("/logout", function(req, res) {
